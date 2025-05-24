@@ -96,11 +96,11 @@ class IndiaMartSubCategory(Spider):
             sub_sub_category = mcat.get("name")
             sub_sub_category_brand_name = mcat.get("brand_name")
             sub_sub_category_prod_map_total = mcat.get("prod_map_total")
-            sub_category_url = urljoin(self.base_url, mcat.get("fname"))
+            sub_sub_category_url = urljoin(self.base_url, f"{mcat.get('fname')}.html")
 
             yield {
                 "sub_sub_category": sub_sub_category,
                 "sub_sub_category_brand_name": sub_sub_category_brand_name,
                 "sub_sub_category_prod_map_total": sub_sub_category_prod_map_total,
-                "sub_category_url": sub_category_url
+                "sub_sub_category_url": sub_sub_category_url
             }

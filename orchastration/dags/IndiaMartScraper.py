@@ -4,11 +4,18 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 import json
 
-def extract_subtargets():
+def extract_sub_targets():
     with open('/data/sub_category_output.json') as infile:
         data = json.load(infile)
     urls = [entry['sub_category_url'] for entry in data]
-    with open('/data/subtargets.txt', 'w') as outfile:
+    with open('/data/sub_targets.txt', 'w') as outfile:
+        outfile.write('\n'.join(urls))
+
+def extract_sub_sub_targets():
+    with open('/data/sub_sub_category_output.json') as infile:
+        data = json.load(infile)
+    urls = [entry['sub_sub_category_url'] for entry in data]
+    with open('/data/sub_sub_targets.txt', 'w') as outfile:
         outfile.write('\n'.join(urls))
 
 default_args = {
@@ -31,19 +38,24 @@ with DAG(dag_id='IndiaMartScraper', default_args=default_args, description='Scra
         )
     )
 
-    extract_subtargets = PythonOperator(
-    task_id='extract_subtargets',
-    python_callable=extract_subtargets
+    extract_sub_targets = PythonOperator(
+    task_id='extract_sub_targets',
+    python_callable=extract_sub_targets
     )
 
-    run_indiamart_subcategory = BashOperator(
+    run_indiamart_sub_category = BashOperator(
         task_id='run_indiamart_subcategory_spider',
         bash_command=(
             "cd /opt/airflow/Scraper && "
             "scrapy crawl IndiaMartSubCategory "
-            "-a path=/data/subtargets.txt "
+            "-a path=/data/sub_targets.txt "
             "-o /data/sub_sub_category_output.json"
         )
     )
 
-    run_indiamart_category >> extract_subtargets >> run_indiamart_subcategory
+    extract_sub_sub_targets = PythonOperator(
+    task_id='extract_sub_sub_targets',
+    python_callable=extract_sub_sub_targets
+    )
+
+    run_indiamart_category >> extract_sub_targets >> run_indiamart_sub_category >> extract_sub_sub_targets
