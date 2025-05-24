@@ -8,14 +8,17 @@ from urllib.parse import urljoin
 
 class IndiaMartSubCategory(Spider):
     """
-    Scrapy Spider to extract subsubcategories from the subcategory of goods directory of IndiaMART. 
+    Scrapy Spider to extract sub-sub-categories from the sub-category of goods directory of IndiaMART. 
 
-    Reads subcategory URLs from a text file and scrapes subsubcategory `name`, `fname`, `brand_name` and `prod-map-total`.
+    Reads sub-category URLs from a JSON file and scrapes sub-sub-category `name`, `fname`, `brand_name` and `prod-map-total`.
 
     Attributes:
-        base_url (str): Base URL for the IndiaMART sub-subcategory.
+        base_url (str): Base URL for the IndiaMART sub-sub-category.
         name (str): Unique spider name used by Scrapy to identify this spider.
-        path (str): Path to the file containing target subcategory URLs.
+        path (str): Path to the JSON file containing:
+                        - category (str): Main category name.
+                        - sub_category (str): Sub-category name.
+                        - sub_category_url (str): Fully resolved URL for the sub-category.
     """
 
     name = "IndiaMartSubCategory"
@@ -25,8 +28,11 @@ class IndiaMartSubCategory(Spider):
         Initialize the spider with a path to the input file.
 
         Parameters:
-            base_url (str): Base URL for the IndiaMART sub-subcategory.
-            path (str): Path to the file containing subcategory URLs.
+            base_url (str): Base URL for the IndiaMART sub-sub-category.
+            path (str): Path to the JSON file containing:
+                        - category (str): Main category name.
+                        - sub_category (str): Sub-category name.
+                        - sub_category_url (str): Fully resolved URL for the sub-category.
         """
 
         self.path = path
@@ -35,7 +41,7 @@ class IndiaMartSubCategory(Spider):
 
     def start_requests(self):
         """
-        Reads target category URLs from text file and sends Scrapy requests.
+        Reads target category URLs from a JSON file and sends Scrapy requests.
 
         Yields:
             Request: Scrapy Request objects with category URLs and associated metadata.
@@ -43,35 +49,55 @@ class IndiaMartSubCategory(Spider):
 
         try:
             with open(self.path, "r", encoding="utf-8") as file:
-                urls = [url.strip() for url in file.readlines() if url.strip()]
-                for url in urls:
+                targets = loads(file.read())
+
+                for target in targets:
+                    category = target.get("category")
+                    sub_category = target.get("sub_category")
+                    sub_category_url = target.get("sub_category_url")
+
+                    if not (category and sub_category and sub_category_url):
+                        self.logger.warning(f"Skipping incomplete entry: {target}")
+                        continue
+
                     yield Request(
-                        url=url,
+                        url=sub_category_url,
                         callback=self.parse,
-                        meta={"category_url": url},
+                        meta={
+                            "category": category,
+                            "sub_category": sub_category,
+                            "sub_category_url": sub_category_url
+                        },
                         dont_filter=True
                     )
         except FileNotFoundError:
             self.logger.error(f"{self.path} file not found.")
+        except Exception as e:
+            self.logger.error(f"Failed to parse {self.path}: {e}")
 
     def parse(self, response: Response) -> Generator[Dict[str, str], None, None]:
         """
-        Parses subsubcategories data from the IndiaMART subcategories.
+        Parses sub-sub-categories data from the IndiaMART sub-categories.
 
         Parameters:
             response (Response): The response object.
 
         Yields:
             dict: A dictionary containing:
-                - sub_sub_category (str): Sub-subcategories name.
-                - sub_sub_category_brand_name (str): Brand name of the sub-subcategory.
-                - sub_sub_category_prod_map_total (str): Total number of products in the sub-subcategory.
-                - sub_sub_category_url (str): Fully resolved URL for the sub-subcategory.
+                - category (str)
+                - sub_category (str)
+                - sub_sub_category (str)
+                - sub_sub_category_brand_name (str)
+                - sub_sub_category_prod_map_total (str)
+                - sub_sub_category_url (str)
         """
 
+        self.category = response.meta.get("category")
+        self.sub_category = response.meta.get("sub_category")
+
         soup = BeautifulSoup(response.text, "lxml")
-        
         script_tags = soup.find_all('script')
+
         for script in script_tags:
             if script.string and 'window.__INITIAL_STATE__' in script.string:
                 match = search(
@@ -81,24 +107,30 @@ class IndiaMartSubCategory(Spider):
                 )
                 if not match:
                     self.logger.warning(f"No JSON data found in the script tags for {response.url}")
-                    return None
-                    
+                    return
+
                 json_str = match.group(1)
                 initial_state: Dict = loads(json_str)
+                break
+        else:
+            self.logger.warning(f"No '__INITIAL_STATE__' script tag found for {response.url}")
+            return
 
         mcats = initial_state.get("mcats", [])
         if not mcats:
             self.logger.warning(f"No 'mcats' data found in the JSON for {response.url}")
-            return None
-        
-        self.logger.info(f"Found {len(mcats)} sub-subcategories in the JSON data.")
+            return
+
+        self.logger.info(f"Found {len(mcats)} sub-sub-categories in the JSON data.")
         for mcat in mcats:
             sub_sub_category = mcat.get("name")
             sub_sub_category_brand_name = mcat.get("brand_name")
-            sub_sub_category_prod_map_total = mcat.get("prod_map_total")
+            sub_sub_category_prod_map_total = mcat.get("prod-map-total")
             sub_sub_category_url = urljoin(self.base_url, f"{mcat.get('fname')}.html")
 
             yield {
+                "category": self.category,
+                "sub_category": self.sub_category,
                 "sub_sub_category": sub_sub_category,
                 "sub_sub_category_brand_name": sub_sub_category_brand_name,
                 "sub_sub_category_prod_map_total": sub_sub_category_prod_map_total,

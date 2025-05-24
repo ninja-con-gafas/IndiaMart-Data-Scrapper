@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 class IndiaMartCategory(Spider):
     """
-    Scrapy Spider to extract subcategories from the goods directory of IndiaMART. 
+    Scrapy Spider to extract sub-categories from the goods directory of IndiaMART. 
 
     Reads category URLs from a text file and scrapes `category`, `sub_category`, `sub_category_url` under each category.
 
@@ -51,16 +51,16 @@ class IndiaMartCategory(Spider):
 
     def parse(self, response: Response) -> Generator[Dict[str, str], None, None]:
         """
-        Parses subcategory data from the IndiaMART directory.
+        Parses sub-category data from the IndiaMART directory.
 
         Parameters:
             response (Response): The response object.
 
         Yields:
             dict: A dictionary containing:
-                - category (str): Main category name from the <h1> tag.
-                - sub_category (str): Subcategory name.
-                - sub_category_url (str): Fully resolved URL for the subcategory.
+                - category (str): Main category name.
+                - sub_category (str): Sub-category name.
+                - sub_category_url (str): Fully resolved URL for the sub-category.
         """
 
         soup = BeautifulSoup(response.text, "lxml")
