@@ -19,6 +19,9 @@ services:
       AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
       AIRFLOW_CONN_PRODUCTS_DB: ${AIRFLOW_CONN_PRODUCTS_DB}
       AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__CORE__PARALLELISM: 16
+      AIRFLOW__CORE__DAG_CONCURRENCY: 8
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 8
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
       AIRFLOW__LOGGING__BASE_LOG_FOLDER: "/opt/airflow/logs"
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY}
@@ -72,11 +75,11 @@ services:
       - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
 
-  airflow-worker:
+  airflow-worker-default:
     build:
       context: ./infrastructure/airflow
       dockerfile: ./Dockerfile
-    container_name: airflow-worker
+    container_name: airflow-worker-default
     restart: always
     depends_on:
       airflow-scheduler:
@@ -85,9 +88,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1024M
     environment:
       AIRFLOW__CELERY__BROKER_URL: "redis://redis:6379/0"
       AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__WORKER_CONCURRENCY: 2
       AIRFLOW_CONN_PRODUCTS_DB: ${AIRFLOW_CONN_PRODUCTS_DB}
       AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
@@ -95,6 +104,7 @@ services:
       AIRFLOW__LOGGING__REMOTE_LOGGING: 'False'
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY}
       AIRFLOW__WEBSERVER__WEB_SERVER_HOST: "airflow-webserver"
+      CELERY_WORKER_QUEUE: "default"
       PYTHONPATH: "/opt/airflow/"
       TZ: "Asia/Kolkata"      
     ports:
@@ -106,7 +116,50 @@ services:
       - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
       - "./orchastration/dags:/opt/airflow/dags:ro"
       - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
-    entrypoint: ["airflow", "celery", "worker"]
+    entrypoint: ["airflow", "celery", "worker", "--queues", "default"]
+
+  airflow-worker-heavy:
+    build:
+      context: ./infrastructure/airflow
+      dockerfile: ./Dockerfile
+    container_name: airflow-worker-heavy
+    restart: always
+    depends_on:
+      airflow-scheduler:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2048M
+    environment:
+      AIRFLOW__CELERY__BROKER_URL: "redis://redis:6379/0"
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CELERY__WORKER_CONCURRENCY: 4
+      AIRFLOW_CONN_PRODUCTS_DB: ${AIRFLOW_CONN_PRODUCTS_DB}
+      AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: "/opt/airflow/logs"
+      AIRFLOW__LOGGING__REMOTE_LOGGING: 'False'
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY}
+      AIRFLOW__WEBSERVER__WEB_SERVER_HOST: "airflow-webserver"
+      CELERY_WORKER_QUEUE: "heavy"
+      PYTHONPATH: "/opt/airflow/"
+      TZ: "Asia/Kolkata"      
+    ports:
+      - "8794:8794"
+    networks:
+      - slooze_network
+    volumes:
+      - "${DATA}:/data:rw"
+      - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
+      - "./orchastration/dags:/opt/airflow/dags:ro"
+      - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
+    entrypoint: ["airflow", "celery", "worker", "--queues", "heavy"]
 
   postgres:
     image: postgres:17-bookworm
