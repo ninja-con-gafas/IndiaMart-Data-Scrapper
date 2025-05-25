@@ -68,6 +68,10 @@ echo "Ensuring data directory exists at '$DATA' with correct permissions"
 mkdir -p "$DATA"
 sudo chmod u+rwx,g+rwx,o+rwx "$DATA"
 
+echo "Ensuring '.scrapy' directory exists at root of the project with correct permissions"
+mkdir -p "./.scrapy"
+sudo chmod u+rwx,g+rwx,o+rwx "./.scrapy"
+
 echo "Creating init.sql for PostgreSQL"
 mkdir -p ./infrastructure/postgres
 cat > ./infrastructure/postgres/init.sql <<EOF

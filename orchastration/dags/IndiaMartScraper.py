@@ -25,7 +25,7 @@ with DAG(dag_id='IndiaMartScraper',
     run_indiamart_category = BashOperator(
         task_id='run_indiamart_category_spider',
         bash_command=(
-            "cd /opt/airflow/Scraper && "
+            "cd /opt/airflow/scraper && "
             "scrapy crawl IndiaMartCategory "
             "-a path=/data/targets.txt "
             "-o /data/sub_category_output.json"
@@ -36,7 +36,7 @@ with DAG(dag_id='IndiaMartScraper',
     run_indiamart_sub_category = BashOperator(
         task_id='run_indiamart_subcategory_spider',
         bash_command=(
-            "cd /opt/airflow/Scraper && "
+            "cd /opt/airflow/scraper && "
             "scrapy crawl IndiaMartSubCategory "
             "-a path=/data/sub_category_output.json "
             "-o /data/sub_sub_category_output.json"
@@ -69,7 +69,7 @@ with DAG(dag_id='IndiaMartScraper',
     run_indiamart_product = BashOperator.partial(
         task_id='run_indiamart_product_spider',
         bash_command=(
-            "cd /opt/airflow/Scraper && "
+            "cd /opt/airflow/scraper && "
             "scrapy crawl IndiaMartProduct "
             "-a path={{ params.input_file }} "
             "-o /data/products/products_part_{{ params.input_file.split('_')[-1].split('.')[0] }}.json"

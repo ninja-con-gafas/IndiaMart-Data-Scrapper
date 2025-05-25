@@ -1,5 +1,5 @@
 beautifulsoup4==4.12.3
 psycopg2-binary==2.9.9
-pyspark==3.5.1
 requests==2.31.0
 scrapy==2.11.0
+scrapy-user-agents==0.1.1

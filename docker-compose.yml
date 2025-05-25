@@ -30,10 +30,11 @@ services:
     networks:
       - slooze_network
     volumes:
+      - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
-      - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
+      - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
       - "./orchastration/dags:/opt/airflow/dags:ro"
-      - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
+      - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["airflow", "scheduler"]
 
   airflow-webserver:
@@ -68,11 +69,12 @@ services:
     networks:
       - slooze_network
     volumes:
+      - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
       - "./infrastructure/airflow/entrypoint.sh:/entrypoint.sh:ro"
-      - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
+      - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
       - "./orchastration/dags:/opt/airflow/dags:ro"
-      - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
+      - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
 
   airflow-worker-default:
@@ -112,10 +114,11 @@ services:
     networks:
       - slooze_network
     volumes:
+      - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
-      - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
+      - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
       - "./orchastration/dags:/opt/airflow/dags:ro"
-      - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
+      - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["airflow", "celery", "worker", "--queues", "default"]
 
   airflow-worker-heavy:
@@ -155,10 +158,11 @@ services:
     networks:
       - slooze_network
     volumes:
+      - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
-      - "./IndiaMart:/opt/airflow/Scraper/IndiaMart:ro"
+      - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
       - "./orchastration/dags:/opt/airflow/dags:ro"
-      - "./scrapy.cfg:/opt/airflow/Scraper/scrapy.cfg:ro"
+      - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["airflow", "celery", "worker", "--queues", "heavy"]
 
   postgres:
