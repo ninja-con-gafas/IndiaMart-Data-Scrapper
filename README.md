@@ -1,12 +1,14 @@
 # Slooze Data Engineering Challenge
 
-This project implements an end-to-end data pipeline for extracting, processing, and storing product listings from [IndiaMART](https://www.indiamart.com/), a major B2B platform. The solution is designed for scalability, reliability, and ease of orchestration using modern data engineering tools.
+This project implements an end-to-end data pipeline for extracting, processing, transforming, and storing product listings from [IndiaMART](https://www.indiamart.com/), a major B2B platform. Designed with modularity and scalability in mind, the pipeline ensures robust scraping, structured data handling, and seamless orchestration using modern data engineering tools.
+
+**Note: This application is under active development. You may encounter bugs, missing features, or inconsistent behavior as functionality is being built out and refined. Expect frequent updates, improvements, and new capabilities.**
 
 ---
 
 ## Objective
 
-Extract, process, and store high-quality, structured product data from all relevant categories and sub-categories on IndiaMART. The pipeline is designed to be robust, reproducible, and extensible for future data engineering needs.
+The objective of this project is to extract structured and high-quality product data from IndiaMART, transform and clean it using PySpark, and store it in a PostgreSQL database for further analytics and usage. This pipeline automates the complete data journey: from crawling web pages to making the processed data queryable and reliable.
 
 ---
 
@@ -15,54 +17,77 @@ Extract, process, and store high-quality, structured product data from all relev
 **Overview:**
 
 - **Input:** List of top-level category URLs (`targets.txt`)
-- **Scraping:** Multi-stage Scrapy spiders extract categories, sub-categories, sub-sub-categories, and product listings.
-- **Intermediate Storage:** All intermediate and final outputs are stored as JSON in a shared data volume (`$DATA`).
-- **Orchestration:** Apache Airflow DAG coordinates the scraping workflow.
-- **Processing:** (Planned) PySpark jobs for data cleaning and transformation.
-- **Storage:** PostgreSQL database for structured, queryable product data.
+- **Scraping:** Scrapy spiders extract categories, sub-categories, sub-sub-categories, and product listings
+- **Intermediate Storage:** All outputs are stored in a shared data volume (`$DATA`) as JSON files
+- **Orchestration:** Apache Airflow DAGs manage execution flow across components
+- **Processing:** PySpark jobs clean, enrich, and enforce schema on the data
+- **Storage:** PostgreSQL database stores structured product data for querying and analytics
 
-**Pipeline Flow:**
+---
 
-1. **Category Extraction:**  
-   [`IndiaMartCategory`](IndiaMart/spiders/IndiaMartCategory.py) spider reads `targets.txt` and extracts sub-categories.
-2. **Sub-Category Extraction:**  
-   [`IndiaMartSubCategory`](IndiaMart/spiders/IndiaMartSubCategory.py) spider reads sub-category JSON and extracts sub-sub-categories.
-3. **Product Extraction:**  
-   [`IndiaMartProduct`](IndiaMart/spiders/IndiaMartProduct.py) spider reads sub-sub-category JSON and extracts product listings.
-4. **(Planned) Processing:**  
-   PySpark jobs (to be implemented) will clean and normalize the data before loading into PostgreSQL.
-5. **Orchestration:**  
-   The entire workflow is orchestrated by an Airflow DAG ([`IndiaMartScraper.py`](orchastration/dags/IndiaMartScraper.py)), running in Docker Compose.
+### Pipeline Flow
+
+1. **Category Extraction**  
+   The [`IndiaMartCategory`](IndiaMart/spiders/IndiaMartCategory.py) spider reads `targets.txt` and extracts sub-categories.
+
+2. **Sub-Category Extraction**  
+   The [`IndiaMartSubCategory`](IndiaMart/spiders/IndiaMartSubCategory.py) spider processes the sub-category output and extracts sub-sub-categories.
+
+3. **Data Partitioning**  
+   A custom Python script (using `pandas`) is executed via an Airflow PythonOperator. It reads `data/sub_sub_category_output.json` and partitions sub-sub-category URLs into logical batches per sub-category. These batches help isolate failures and improve throughput by processing in parallel.
+
+4. **Product Extraction**  
+   The [`IndiaMartProduct`](IndiaMart/spiders/IndiaMartProduct.py) spider receives batched inputs and extracts product listings.
+
+5. **Buffered Logging**  
+   Airflow writes extracted product listings to intermediate log files grouped by sub-category. These act as buffered staging logs until all related sub-sub-categories are complete, ensuring resumability and consistency.
+
+6. **Data Processing**  
+   PySpark jobs read from the staging logs, validate and deduplicate entries, enforce schema, enrich the data, and load the cleaned dataset into the PostgreSQL database.
+
+7. **Orchestration and Monitoring**  
+   The entire workflow is managed by an Airflow DAG ([`IndiaMartScraper.py`](orchestration/dags/IndiaMartScraper.py)), deployed within Docker Compose. Errors and logs are surfaced through the Airflow UI.
 
 ---
 
 ## Technology & Design Justification
 
-- **Scrapy + BeautifulSoup:**  
-  Scrapy provides a robust, asynchronous scraping framework with built-in support for retries, throttling, and extensibility. BeautifulSoup is used for flexible HTML parsing, especially for complex or irregular page structures.
-- **Apache Airflow:**  
-  Chosen for its mature DAG-based orchestration, scheduling, and monitoring capabilities. Airflow enables reproducible, auditable ETL pipelines and integrates well with Docker.
-- **Docker Compose:**  
-  Ensures consistent, reproducible environments for development and deployment. All services (Airflow, Scrapy, PostgreSQL, Redis) are containerized for isolation and portability.
-- **PostgreSQL:**  
-  Reliable, open-source relational database for storing structured product data, supporting complex queries and analytics.
-- **PySpark:**  
-  (Planned) For scalable, distributed data processing and cleaning, especially as data volumes grow.
-- **Redis:**  
-  Used as a broker for Airflow's CeleryExecutor, enabling distributed task execution.
-- **Filesystem-based Data Exchange:**  
-  All intermediate files are stored in a shared Docker volume (`$DATA`), simplifying data flow between pipeline stages and supporting easy debugging.
+- **Scrapy + BeautifulSoup**  
+  Scrapy provides a robust, asynchronous scraping framework with built-in support for retries and throttling. BeautifulSoup is used for flexible HTML parsing in irregular structures.
 
-**Development Approach:**
+- **Apache Airflow**  
+  Airflow provides DAG-based orchestration with scheduling, logging, and failure recovery. It supports reproducible and auditable ETL workflows.
 
-- **Modular Spiders:**  
-  Each spider is responsible for a single stage, making the pipeline easy to debug and extend.
-- **Configurable Inputs/Outputs:**  
-  All file paths are parameterized and mapped via Docker volumes, supporting local development and production deployment.
-- **Environment-Driven Configuration:**  
-  All credentials and paths are managed via `.env` and injected into containers, supporting secure and flexible deployments.
-- **Open Source & Reproducibility:**  
-  All infrastructure is defined as code (Docker, Airflow DAGs, SQL init scripts), ensuring anyone can reproduce the pipeline.
+- **Docker Compose**  
+  Containers ensure consistent environments for development and deployment. All services (Airflow, Scrapy, PostgreSQL, Redis) are containerized for isolation and repeatability.
+
+- **PostgreSQL**  
+  A reliable open-source database used to store structured product data and support analytical queries.
+
+- **PySpark**  
+  Handles large-scale data transformations and schema validations in distributed mode.
+
+- **Redis**  
+  Used as the CeleryExecutor broker in Airflow, enabling distributed task execution.
+
+- **File-Based Intermediate Storage**  
+  Shared volume (`$DATA`) simplifies development, testing, and debugging by avoiding the need for external storage during early pipeline stages.
+
+---
+
+## Data Flow and Schema
+
+![Data Flow](./doc/data-flow.png "Data Flow")
+
+---
+
+## Development Approach
+
+- Modular spiders with single-responsibility design for each scraping phase
+- Environment-configurable via `.env` and Docker volumes
+- Entire infrastructure defined as code (Airflow DAGs, SQL schema, Dockerfiles)
+- Clear separation of intermediate and final outputs in a structured filesystem
+- SQL schema is created by a dedicated `.sql` script during pipeline initialization
 
 ---
 
@@ -70,7 +95,7 @@ Extract, process, and store high-quality, structured product data from all relev
 
 ### 1. Environment Configuration (`.env`)
 
-Set the following environment variables in a `.env` file at the root of the project. If not set, defaults from [`build.sh`](build.sh) will be used.
+Create a `.env` file in the project root to override environment variables. If not provided, default values from [`build.sh`](build.sh) are used.
 
 #### Airflow Settings
 
@@ -105,6 +130,8 @@ Set the following environment variables in a `.env` file at the root of the proj
 | `POSTGRES_USERNAME`                  | `postgres`                       | Root PostgreSQL user                       |
 | `POSTGRES_PASSWORD`                  | `postgrespassword`               | Root PostgreSQL password                   |
 
+> **Security Warning:** Replace all default credentials with secure values in production environments. Avoid checking `.env` files into version control.
+
 ---
 
 ### 2. Provide Input: `targets.txt`
@@ -135,14 +162,23 @@ docker compose up -d
 
 ## Orchestration: Airflow DAG
 
-The main DAG is [`IndiaMartScraper.py`](orchastration/dags/IndiaMartScraper.py):
+The primary DAG is [`IndiaMartScraper.py`](orchestration/dags/IndiaMartScraper.py), which executes the following steps:
 
-1. Reads `/data/targets.txt` and runs the `IndiaMartCategory` spider, outputting `/data/sub_category_output.json`.
-2. Runs the `IndiaMartSubCategory` spider on `/data/sub_category_output.json`, outputting `/data/sub_sub_category_output.json`.
-3. Runs the `IndiaMartProduct` spider on `/data/sub_sub_category_output.json`, outputting `/data/product_output.json`.
-4. (Planned) Downstream tasks for PySpark processing and PostgreSQL loading.
+- Read `/data/targets.txt` inside the container and run `IndiaMartCategory` spider
+- Store output in `/data/sub_category_output.json` inside the container
+- Run `IndiaMartSubCategory` spider to extract sub-sub-category URLs
+- Save output to `/data/sub_sub_category_output.json` inside the container  
+- Partition the sub-sub-category URLs into logical batches using a custom Python script (using `pandas`), triggered via an Airflow PythonOperator
+- Trigger `IndiaMartProduct` spiders per batch and log results to sub-category-level staging files a buffered log mechanism that ensures intermediate consistency and resumability.
+- After all batches complete, initiate a PySpark job to process logs, enforce schema, deduplicate, and load data into PostgreSQL
+- Use a dedicated `.sql` script to define and initialize the database schema
 
-All intermediate and final outputs are stored in the shared `/data` volume for easy access and debugging.
+Airflow handles:
+
+- Task scheduling and orchestration
+- Dependency resolution
+- Error handling and retry mechanisms
+- Centralized logging via its web interface
 
 ---
 
@@ -150,7 +186,7 @@ All intermediate and final outputs are stored in the shared `/data` volume for e
 
 - **Add new spiders** to [`IndiaMart/spiders`](IndiaMart/spiders) for additional data extraction.
 - **Add PySpark jobs** for data cleaning and transformation in the `processor/` directory.
-- **Add new Airflow DAGs** in [`orchastration/dags`](orchastration/dags) for more complex workflows.
+- **Add new Airflow DAGs** in [`orchestration/dags`](orchestration/dags) for more complex workflows.
 
 ---
 

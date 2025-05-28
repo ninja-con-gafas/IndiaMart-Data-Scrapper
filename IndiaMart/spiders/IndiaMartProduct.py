@@ -78,12 +78,12 @@ class IndiaMartProduct(Spider):
 
         Yields:
             dict: A dictionary containing:
-                - category (str)
-                - sub_category (str)
-                - sub_sub_category (str)
-                - product (str): Name of the product
-                - price (str): Price of the product
-                - url (str): URL to the product page
+                - category (str): Main category name.
+                - sub_category (str): Sub-category name.
+                - sub_sub_category (str): Sub-sub-category name.
+                - product (str): Name of the product.
+                - price (str): Price of the product.
+                - url (str): Fully resolved URL for the product page.
         """
 
         soup = BeautifulSoup(response.text, "lxml")

@@ -84,12 +84,12 @@ class IndiaMartSubCategory(Spider):
 
         Yields:
             dict: A dictionary containing:
-                - category (str)
-                - sub_category (str)
-                - sub_sub_category (str)
-                - sub_sub_category_brand_name (str)
-                - sub_sub_category_prod_map_total (str)
-                - sub_sub_category_url (str)
+                - category (str): Main category name.
+                - sub_category (str): Sub-category name.
+                - sub_sub_category (str): Sub-sub-category name.
+                - sub_sub_category_brand_name (str): Brand name of the sub-sub-category, if applicable.
+                - sub_sub_category_prod_map_total (str): Total number of products in the sub-sub-category.
+                - sub_sub_category_url (str): Fully resolved URL for the sub-sub-category.
         """
 
         self.category = response.meta.get("category")
