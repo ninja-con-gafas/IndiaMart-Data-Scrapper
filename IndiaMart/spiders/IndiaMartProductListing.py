@@ -5,7 +5,7 @@ from scrapy.http import Response
 from typing import Dict, Generator
 
 
-class IndiaMartProduct(Spider):
+class IndiaMartProductListing(Spider):
     """
     Scrapy Spider to extract product listings from sub-sub-category pages on IndiaMART.
 
@@ -20,7 +20,7 @@ class IndiaMartProduct(Spider):
                     - sub_sub_category_url (str)
     """
 
-    name = "IndiaMartProduct"
+    name = "IndiaMartProductListing"
 
     def __init__(self, path: str = "sub_sub_category_data.json"):
         """

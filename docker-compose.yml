@@ -30,7 +30,8 @@ services:
       - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
       - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
-      - "./orchastration/dags:/opt/airflow/dags:ro"
+      - "./orchestration/dags:/opt/airflow/dags:ro"
+      - "./process:/opt/airflow/process:ro"
       - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["airflow", "scheduler"]
 
@@ -70,7 +71,8 @@ services:
       - "${DATA}:/data:rw"
       - "./infrastructure/airflow/entrypoint.sh:/entrypoint.sh:ro"
       - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
-      - "./orchastration/dags:/opt/airflow/dags:ro"
+      - "./orchestration/dags:/opt/airflow/dags:ro"
+      - "./process:/opt/airflow/process:ro"
       - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
 
@@ -107,7 +109,8 @@ services:
       - "./.scrapy:/opt/airflow/scraper/.scrapy:rw"
       - "${DATA}:/data:rw"
       - "./IndiaMart:/opt/airflow/scraper/IndiaMart:ro"
-      - "./orchastration/dags:/opt/airflow/dags:ro"
+      - "./orchestration/dags:/opt/airflow/dags:ro"
+      - "./process:/opt/airflow/process:ro"
       - "./scrapy.cfg:/opt/airflow/scraper/scrapy.cfg:ro"
     entrypoint: ["airflow", "celery", "worker"]
 

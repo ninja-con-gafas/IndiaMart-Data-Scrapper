@@ -3,15 +3,15 @@ from pyspark.sql.functions import col, collect_set, trim, udf
 from pyspark.sql.types import DoubleType, IntegerType, StringType
 from typing import Optional
 
-class IndiaMartProducts:
+class IndiaMartProductsListing:
     """
-    Cleans and deduplicates IndiaMart product data using PySpark.
+    Cleans and deduplicates IndiaMart product listing data using PySpark.
 
     Parameters:
         input_path (str): Path to the input JSON file.
 
     Attributes:
-        products (DataFrame): The DataFrame containing products data.
+        products (DataFrame): The DataFrame containing list of products.
 
     Methods:
         run(): Executes the full cleaning and deduplication.
@@ -26,7 +26,7 @@ class IndiaMartProducts:
         filters out invalid prices.
 
         Parameters:
-            products (DataFrame): DataFrame containing product data scraped from the website.
+            products (DataFrame): DataFrame containing list of products scraped from the indiamart.com website.
 
         Returns:
             DataFrame: Cleaned and transformed DataFrame with trimmed strings and cleaned prices.
@@ -104,8 +104,8 @@ class IndiaMartProducts:
 
     def run(self, spark: SparkSession) -> None:
         """
-        Orchestrates the full data processing pipeline. It loads raw JSON, cleans and transforms data, removes 
-        duplicates, and registers the result as a temporary Spark SQL view.
+        Loads raw JSON, cleans and transforms data, removes duplicates, and registers the result as a temporary Spark 
+        SQL view.
 
         Parameters:
             None

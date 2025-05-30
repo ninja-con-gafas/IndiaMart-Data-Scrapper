@@ -92,8 +92,8 @@ class IndiaMartSubCategory(Spider):
                 - sub_sub_category_url (str): Fully resolved URL for the sub-sub-category.
         """
 
-        self.category = response.meta.get("category")
-        self.sub_category = response.meta.get("sub_category")
+        category = response.meta.get("category")
+        sub_category = response.meta.get("sub_category")
 
         soup = BeautifulSoup(response.text, "lxml")
         script_tags = soup.find_all('script')
@@ -129,8 +129,8 @@ class IndiaMartSubCategory(Spider):
             sub_sub_category_url = urljoin(self.base_url, f"{mcat.get('fname')}.html")
 
             yield {
-                "category": self.category,
-                "sub_category": self.sub_category,
+                "category": category,
+                "sub_category": sub_category,
                 "sub_sub_category": sub_sub_category,
                 "sub_sub_category_brand_name": sub_sub_category_brand_name,
                 "sub_sub_category_prod_map_total": sub_sub_category_prod_map_total,

@@ -1,6 +1,8 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+from process.utilities import partition_json_by_key
 
 default_args = {
     'owner': 'airflow',
@@ -18,8 +20,8 @@ with DAG(dag_id='IndiaMartScraper',
          catchup=False, 
          tags=['IndiaMart', 'Scraping']) as dag:
 
-    run_indiamart_category = BashOperator(
-        task_id='run_indiamart_category_spider',
+    scrape_indiamart_category = BashOperator(
+        task_id='scrape_indiamart_category',
         bash_command=(
             "cd /opt/airflow/scraper && "
             "scrapy crawl IndiaMartCategory "
@@ -28,8 +30,8 @@ with DAG(dag_id='IndiaMartScraper',
         )
     )
 
-    run_indiamart_sub_category = BashOperator(
-        task_id='run_indiamart_subcategory_spider',
+    scrape_indiamart_sub_category = BashOperator(
+        task_id='scrape_indiamart_subcategory',
         bash_command=(
             "cd /opt/airflow/scraper && "
             "scrapy crawl IndiaMartSubCategory "
@@ -38,14 +40,26 @@ with DAG(dag_id='IndiaMartScraper',
         )
     )
 
-    run_indiamart_product = BashOperator(
-        task_id='run_indiamart_product_spider',
-        bash_command=(
-            "cd /opt/airflow/scraper && "
-            "scrapy crawl IndiaMartProduct "
-            "-a path=/data/sub_sub_category_output.json "
-            "-o /data/product_output.json"
-        )
+    partition_sub_sub_category = PythonOperator(
+        task_id="partition_sub_sub_category_files",
+        python_callable=partition_json_by_key,
+        op_kwargs={
+            "input_file_path": "/data/sub_sub_category_output.json",
+            "output_directory": "/tmp/IndiaMart/data/partitioned",
+            "key": "sub_category"
+        }
     )
 
-    run_indiamart_category >> run_indiamart_sub_category >> run_indiamart_product
+    scrape_indiamart_product_listing = BashOperator.partial(
+        task_id='scrape_indiamart_product_listing',
+        bash_command=(
+            "cd /opt/airflow/scraper && "
+            "input_file={{ params.input_file }} && "
+            "stem=$(basename ${input_file} .json) && "
+            "scrapy crawl IndiaMartProductListing "
+            "-a path=${input_file} "
+            "-o /data/products/${stem}.json "
+        )
+    ).expand(params=partition_sub_sub_category.output.map(lambda file: {"input_file": file}))
+
+    scrape_indiamart_category >> scrape_indiamart_sub_category >> partition_sub_sub_category >> scrape_indiamart_product_listing
