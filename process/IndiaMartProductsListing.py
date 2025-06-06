@@ -1,5 +1,5 @@
 from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql.functions import col, collect_set, trim, udf
+from pyspark.sql.functions import array_sort, col, collect_set, concat_ws, size, trim, udf
 from pyspark.sql.types import DoubleType, IntegerType, StringType
 from typing import Optional
 
@@ -93,14 +93,16 @@ class IndiaMartProductsListing:
                 tags (int): Count of unique sub-sub-categories aggregated.
         """
 
-        join_set_udf = udf(lambda values: ', '.join(sorted(filter(None, values))), StringType())
-        count_set_udf = udf(lambda values: len(list(filter(None, values))), IntegerType())
-
-        return (products.groupBy("category", "sub_category", "product", "price", "url")
-                .agg(collect_set("sub_sub_category").alias("sub_sub_categories_set"))
-                .withColumn("sub_sub_categories", join_set_udf(col("sub_sub_categories_set")))
-                .withColumn("tags", count_set_udf(col("sub_sub_categories_set")))
-                .drop("sub_sub_categories_set"))
+        return (
+            products
+            .filter(col("price").isNotNull())
+            .dropDuplicates(["category", "sub_category", "sub_sub_category", "product", "price", "url"])
+            .groupBy("category", "sub_category", "product", "price", "url")
+            .agg(array_sort(collect_set("sub_sub_category")).alias("sub_sub_categories_array"))
+            .withColumn("sub_sub_categories", concat_ws(", ", col("sub_sub_categories_array")))
+            .withColumn("tags", size(col("sub_sub_categories_array")))
+            .drop("sub_sub_categories_array")
+        )
 
     def run(self, spark: SparkSession) -> None:
         """
